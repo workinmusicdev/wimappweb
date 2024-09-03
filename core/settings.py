@@ -27,7 +27,9 @@ from pathlib import Path
 
 import environ
 # settings.py
-import os
+import firebase_admin
+from firebase_admin import credentials
+
 
 import os
 from storages.backends.s3boto3 import S3Boto3Storage
@@ -179,6 +181,11 @@ SWAGGER_SETTINGS = {
         }
     }
 }
+
+cred = credentials.Certificate("workinmusic-30b37-firebase-adminsdk-h7ihz-4300daf253.json")
+firebase_admin.initialize_app(cred)
+print(firebase_admin.__name__)
+
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases

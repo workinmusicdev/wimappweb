@@ -8,3 +8,5 @@ licenceapp/migrations/
 quizzapp/migrations/
 musicapp/migrations/
 paiementapp/migrations
+__pycache__
+__init__.py
