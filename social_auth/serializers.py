@@ -53,11 +53,8 @@ class GoogleSocialAuthSerializer(serializers.Serializer):
 
         return register_social_user(
             provider=provider, user_id=user_id, email=email, name=name)
-    
-class SocialSerializerGoogle(serializers.Serializer):
-    """
-    Serializer which accepts an OAuth2 access token and provider.
-    """
-    # provider = serializers.CharField(max_length=255, required=True)
-    access_token = serializers.CharField(max_length=4096, required=True, trim_whitespace=True)
 
+
+class SocialAuthSerializer(serializers.Serializer):
+    access_token = serializers.CharField(max_length=4096, required=True, trim_whitespace=True)
+    provider = serializers.ChoiceField(choices=['google', 'facebook', 'apple'], required=True)

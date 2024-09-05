@@ -1,37 +1,40 @@
+import random
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import auth
-
-def Firebase_validation(id_token):
-   """
-   This function receives id token sent by Firebase and
-   validate the id token then check if the user exist on
-   Firebase or not if exist it returns True else False
-   """
+from accountapp.models import CustomUser
 
 
-   decoded_token = auth.verify_id_token(id_token)
-   uid = decoded_token['uid']
-   provider = decoded_token['firebase']['sign_in_provider']
-   image = None
-   name = None
-   if "name" in decoded_token:
-      name = decoded_token['name']
-   if "picture" in decoded_token:
-        image = decoded_token['picture']
-   try:
-        user = auth.get_user(uid)
-        email = user.email
-        if user:
+def generate_username(name):
+    base_username = "".join(name.split()).lower()
+    username = base_username
+    while CustomUser.objects.filter(username=username).exists():
+        username = f"{base_username}{random.randint(0, 1000)}"
+    return username
+
+
+def validate_firebase_token(id_token):
+    """
+    Valide le token Firebase et retourne les informations de l'utilisateur si valide.
+    """
+    try:
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token.get('uid')
+        provider = decoded_token.get('firebase', {}).get('sign_in_provider')
+        email = decoded_token.get('email')
+        name = decoded_token.get('name', '')
+        picture = decoded_token.get('picture', '')
+        
+        if uid and email:
             return {
                 "status": True,
                 "uid": uid,
                 "email": email,
                 "name": name,
                 "provider": provider,
-                "image": image
+                "image": picture
             }
-        else:
-            return False
-   except Exception:
-        print("user not exist")
+        return False
+    except Exception as e:
+        print(f"Firebase validation error: {e}")
+        return False

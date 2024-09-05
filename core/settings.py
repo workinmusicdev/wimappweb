@@ -64,10 +64,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-'django.contrib.sites',
-'allauth',
-'allauth.account',
-
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.facebook',
     'allauth.socialaccount.providers.google',
@@ -75,24 +74,13 @@ INSTALLED_APPS = [
     'oauth2_provider',
     'social_django',
     'rest_framework_social_oauth2',
-
-
-
     "corsheaders",
     'rest_framework',
-'dj_rest_auth',
-
-
+    'dj_rest_auth',
     'dj_rest_auth.registration',
-
     'storages',
-
-
-
-
     'import_export',
-'djoser',
-
+    'djoser',
     "rest_framework_simplejwt.token_blacklist",
     'rest_framework_simplejwt',
     "rest_framework.authtoken",

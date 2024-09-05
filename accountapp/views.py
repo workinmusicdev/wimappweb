@@ -304,6 +304,7 @@ class CustomLoginView(APIView):
             ),
         }
     )
+    
     def post(self, request, *args, **kwargs):
         serializer = CustomLoginSerializer(data=request.data)
         if serializer.is_valid():

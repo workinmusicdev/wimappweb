@@ -1,83 +1,114 @@
-from django.shortcuts import render
-from requests import Response
+import os
+from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from accountapp.models import CustomUser
-from social_auth.serializers import GoogleSocialAuthSerializer, FacebookSocialAuthSerializer, SocialSerializerGoogle
-from social_auth.utils import Firebase_validation
+from accountapp.serializers import CustomUserSerializer
+from licenceapp.serializers import LicenceSerializer
+from social_auth.serializers import GoogleSocialAuthSerializer, FacebookSocialAuthSerializer, SocialAuthSerializer
+from social_auth.utils import generate_username, validate_firebase_token
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from django.contrib.auth import authenticate
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 
-
-# Create your views here.
 
 class SocialSignupAPIView(GenericAPIView):
-   """
-   api for creating user from social logins
-   """
-   serializer_class = SocialSerializerGoogle
+    """
+    API pour l'inscription et la connexion via les réseaux sociaux.
+    """
+    permission_classes = [AllowAny]
+    serializer_class = SocialAuthSerializer
 
-   def post(self, request):
-       # auth_header = request.META.get('HTTP_AUTHORIZATION')
-
-       # if auth_header:
-       # "ya29.a0AcM612wi-4bfC1SkC1H8QBn6PkqL1ZvNEtRy_s3c7hio14iZU-xoXqSQ2mWZQWCEGjX9AcO5TcjCoTGIe9FwIFqeZ6_FijOgR7XOdMLbDFmntfod64Rc41gE89alnvNi6qag_2QrKuc_rvJdo26jjdx7BwfbWtfEXgCn2xCuq2waCgYKAegSARISFQHGX2Mi1xc-irfTO7sTIUjCeM_Hpw0178"
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
         
-        # id_token = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNjNWU0MTg0M2M1ZDUyZTY4ZWY1M2UyYmVjOTgxNDNkYTE0NDkwNWUiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiRmVyZGluYW5kIEFMTE9XQUtPVSIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NLLWFRV3ZHUUUyYUpoNEMyQWNkNVpkQ25aNEx5TGtVNGZxbmZqVWdjeGN5QWNWNmc9czk2LWMiLCJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vd29ya2lubXVzaWMtMzBiMzciLCJhdWQiOiJ3b3JraW5tdXNpYy0zMGIzNyIsImF1dGhfdGltZSI6MTcyNTM0ODg4MiwidXNlcl9pZCI6IkpITTRLd0FzV0xUQ0JtUkc5b29hVVdHUmVFeTEiLCJzdWIiOiJKSE00S3dBc1dMVENCbVJHOW9vYVVXR1JlRXkxIiwiaWF0IjoxNzI1MzQ4ODgyLCJleHAiOjE3MjUzNTI0ODIsImVtYWlsIjoiZmFsbG93YWtvdUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJnb29nbGUuY29tIjpbIjExMTU2OTIzMzY2NTMzNjg3NjAyNiJdLCJlbWFpbCI6WyJmYWxsb3dha291QGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6Imdvb2dsZS5jb20ifX0.KO5B7MmTWTH4Z_9DW7LGvsr37s_Ja-jsspzqonkaTVOLLfpOfKdGFKG3bpt7zGJu4s87THaXT4eXyYz1mktKM_hp6fkO-tDmG2YaGjTwn1YaErKEOgS6hHBAHEGY0UbapcEA-vd792u252WI_jKNLW3d7V6iLDCI1Hu6yrTaepfG3D664dV8BwINus9dQ3CpWxigeExflmK6uYCyd9uQpZhWnQMOsCrsCUhmqT9otopMNTTJfLGxUhSCj4jwgcEK6hqfV90LbcVrAdGC0FXK0_8BB-p8cBF2NWqprpLlOhwk8ql7tHDbOilaBw3f6pRA9ALGkRgmI69pMRak0Z3yXQ"
-
-        validate = Firebase_validation(request.data["access_token"])
-
-        print("validate")
-        print(validate)
-        print("validate")
-
+        access_token = serializer.validated_data['access_token']
+        provider = serializer.validated_data['provider']
+        
+        validate = validate_firebase_token(access_token)
+        
         if validate:
-            # user = CustomUser.objects.filter(uid = validate["uid"]).first()
-            user = CustomUser.objects.filter(email = validate["email"]).first()
+            print(validate)
+            email = validate.get('email')
+            name = validate.get('name') or email.split('@')[0]
+            provider = validate.get('provider')
+            image = validate.get('image')
+            
+            try:
+                user = CustomUser.objects.get(email=email)
+                print(user)
+                print(user.auth_provider)
+                print(provider)
+                print(user.password)
 
-            if user:
-                
-                data = {
-                    "id": user.id,
-                    "email": user.email,
-                    "name": user.username,
-                    "image": user.profilImg,
-                    "type": "existing_user",
-                    "provider": validate['provider']
-                }
+                if user.auth_provider != provider:
+                    raise AuthenticationFailed(
+                        detail=f'Veuillez vous connecter via {user.auth_provider}.')
 
-                return Response({"data": data,"message": "Login Successful" })
+                # Authentifier l'utilisateur avec un mot de passe secret pour les utilisateurs sociaux
+                # user = authenticate(email=email, password=os.environ.get('SOCIAL_SECRET'))
+                print('-------------')
+                print(user)
+                print('-------------')
+                if user:
+                    refresh = RefreshToken.for_user(user)
+                    licences = user.licences.all()
+                    serializer = LicenceSerializer(licences, many=True)
+                    print('-------------+++++')
+                    print(refresh)
+                    print(refresh.access_token)
+                    print('-------------+++++')
+                    user_data = CustomUserSerializer(user).data
 
-            else:
+                    return Response({
+                        'refresh': str(refresh),
+                        'access': str(refresh.access_token),
+                        # 'tokens': user.tokens(),
+                        'user': user_data,
+                        'licences': serializer.data
+                    }, status=status.HTTP_200_OK)
+                else:
+                    raise AuthenticationFailed('Échec de l\'authentification.')
+            
+            except CustomUser.DoesNotExist:
+                # Créer un nouvel utilisateur
+                print("Créer un nouvel utilisateur")
+                username = generate_username(name)
+                user = CustomUser.objects.create_user(
+                    email=email,
+                    username=username,
+                    password=os.environ.get('SOCIAL_SECRET'),
+                    auth_provider=provider,
+                    is_verified=True,
+                    profilImg=image
+                )
+                user.save()
+                print(user.id)
 
-                # user = CustomUser(email = validate['email'],
-                #                     name = validate['name'],
+                # Authentifier le nouvel utilisateur
+                # user = authenticate(email=email, password=os.environ.get('SOCIAL_SECRET'))
+                print(user)
+                refresh = RefreshToken.for_user(user)
+                licences = user.licences.all()
+                serializer = LicenceSerializer(licences, many=True)
 
-                #                     uid = validate['uid'],
-
-                #                     image = validate['image']
-
-                #                     )
-
-                # user.save()
-
-                # data = {
-                #     "id": user.id,
-                #     "email": user.email,
-                #     "name": user.username,
-                #     "image": user.profilImg,
-                #     "type": "new_user",
-                #     "provider": validate['provider']
-                # }
-
-                return Response({"data": validate,
-
-                                "message": "User Created Successfully" })
-
+                return Response({
+                        'refresh': str(refresh),
+                        'access': str(refresh.access_token),
+                        'user': {
+                            'id': user.id,
+                            'email': user.email,
+                            'isAuto': user.is_auto,
+                        },
+                        'licences': serializer.data
+                    }, status=status.HTTP_201_CREATED)
         else:
-            return Response({"message": "invalid token"})
-    #    else:
-    #         return Response({"message": "token not provided"})
-                                            
-                                            
+            return Response({'message': 'Token invalide ou expiré.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
 class GoogleSocialAuthView(GenericAPIView):
 
     serializer_class = GoogleSocialAuthSerializer
@@ -114,6 +145,3 @@ class FacebookSocialAuthView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         data = ((serializer.validated_data)['auth_token'])
         return Response(data, status=status.HTTP_200_OK)
-
-
-
